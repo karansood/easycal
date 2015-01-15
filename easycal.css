@@ -1,0 +1,32 @@
+table.easycal{
+	width: 100%;
+	border: 1px solid #CCC;
+	border-collapse: collapse;
+	table-layout: fixed;
+}
+
+table.easycal thead th{
+	border-bottom: 1px solid #CCC;
+	border-left: 1px solid #CCC;
+	padding: 10px;
+}
+
+table.easycal thead th:FIRST-CHILD{
+	border-left: 0;
+}
+
+table.easycal tr td{
+	border-top: 1px solid #CCC;
+	border-left: 1px solid #CCC;
+	padding: 10px;
+	cursor: pointer;
+}
+
+table.easycal tr td:FIRST-CHILD{
+	border-left: 0;
+	cursor: default;
+}
+
+table.easycal tr:FIRST-CHILD td{
+	border-top: 0;
+}
