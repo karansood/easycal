@@ -5,7 +5,7 @@
 	<link rel="stylesheet" type="text/css" href="easycal.css">
 
 	<style>
-		body{ width: 960px; margin: 0 auto; font-size: 12px; }
+		body{ width: 960px; margin: 0 auto; font-size: 12px; box-sizing: border-box;}
 
 	</style>
 </head>
@@ -14,9 +14,9 @@
 	<div class="mycal" style="width:100%;"></div>
 
 
-	<script type="text/javascript" src="jquery-1.11.2.min.js"></script>
-	<script type="text/javascript" src="underscore-1.7.0.min.js"></script>
-	<script type="text/javascript" src="moment-2.9.0.min.js"></script>
+	<script type="text/javascript" src="lib/jquery-1.11.1.min.js"></script>
+	<script type="text/javascript" src="lib/underscore-1.7.0.min.js"></script>
+	<script type="text/javascript" src="lib/moment-2.9.0.min.js"></script>
 	<script type="text/javascript" src="easycal.js"></script>
 
 	<script>
@@ -25,7 +25,7 @@
 			maxTime : '19:00:00',
 			slotDuration : 30,
 			startDate : '31/10/2014',
-			onSlotClick : function(){
+			dayClick : function(){
 				console.log('Slot selected');
 			}
 		});

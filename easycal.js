@@ -1,5 +1,7 @@
 (function($, window, document, _, undefined){
 
+
+
 	if( typeof Object.create !== 'function'){
 		Object.create = function(obj){
 			function F(){};
@@ -19,7 +21,7 @@
 			self.launch();
 			
 			self.$elem.find('td').on('click', function(){
-				self.options.onSlotClick.apply(self);
+				self.options.dayClick.apply(self);
 			});
 
 		},
@@ -84,11 +86,83 @@
 			return $container;
 		},
 
+		renderHTML : function(){
+			return '<table border="0" cellpadding="0" cellpadding="0" class="easycal">' +
+						'<thead>' +
+							'<tr>' +
+								'<td>' +
+									(this.renderHeadHTML()) +
+								'</td>' +
+							'</tr>' +
+						'</thead>' +
+						'<tbody>' +
+							'<tr>' +
+								'<td>' +
+									(this.renderTimeGridHTML()) +
+								'</td>' +
+							'</tr>' +
+						'</tobdy' +
+				'</table>';
+		},
+
+		renderHeadHTML : function(){
+			var date = moment(this.options.startDate, 'DD-MM-YYYY');
+			date.isoWeekday(1);
+
+			var html = '<table border="0" cellspacing="0" cellpadding="0"><tbody><tr>';
+			for(var i = 0 ; i < 8 ; i++){
+				var cellContent = '';
+				if(i !== 0){
+					cellContent = date.format(this.options.columnDateFormat);
+					html += '<th class="ec-day-header">' + cellContent + '</th>';
+					date.add(1, 'd');
+				}else{
+					html += '<th style="width:35px;"></th>';
+				}
+			}
+			return html + '</tr></tbody></table>';
+		},
+
+		renderTimeGridHTML : function(){
+			var minTime = moment(this.options.minTime, 'HH:mm:ss');
+			var maxTime = moment(this.options.maxTime, 'HH:mm:ss');
+			var time = minTime.clone();
+
+			
+			var html = '<table border="0" cellspacing="0" cellpadding="0"><tbody><tr>';
+
+			for(var i = 0 ; i < 8 ; i++){
+				if(i===0){
+					html += '<td style="width:35px;">';
+				}else{
+					html += '<td>';
+				}
+				
+
+				for(;time.isBefore(maxTime);){
+
+					if(i === 0){
+						var cellContent = time.format(this.options.timeFormat);
+						html += '<div class="table-cell ' + this.options.widgetTimeClass + '">' + cellContent + '</div>';
+					}else{
+						html += '<div class="table-cell ' + this.options.widgetSlotClass + '"></div>';
+					}
+					time.add(this.options.slotDuration,'m');
+				}
+
+				html += '</td>';
+				time = minTime.clone();
+			}
+
+			return html + '</tr></tbody></table>';
+		},
+
 		display : function(){
 			var html = this.generateHTML();
-			this.$elem.html(html);
-		}
+			//this.$elem.html(html);
 
+			this.$elem.html(this.renderHTML());
+		}
 	};
 
 	$.fn.easycal = function(options){
@@ -110,7 +184,12 @@
 		minTime : '08:00:00',
 		maxTime : '19:00:00',
 		slotDuration : 15, //in mins
-		onSlotClick : null
+		dayClick : null,
+		eventClick : null,
+
+		widgetHeaderClass : 'ec-day-header',
+		widgetSlotClass : 'ec-slot',
+		widgetTimeClass : 'ec-time'
 	};
 
 })(jQuery, window, document, _);

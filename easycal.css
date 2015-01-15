@@ -1,32 +1,22 @@
-table.easycal{
+.easycal table{
 	width: 100%;
-	border: 1px solid #CCC;
-	border-collapse: collapse;
 	table-layout: fixed;
+	border-collapse: collapse;
+	border-spacing: 0px;
 }
 
-table.easycal thead th{
-	border-bottom: 1px solid #CCC;
+.easycal .table-cell{
+	height: 25px;
+	padding-top: 15px;
+	max-height: 45px;
 	border-left: 1px solid #CCC;
-	padding: 10px;
-}
-
-table.easycal thead th:FIRST-CHILD{
-	border-left: 0;
-}
-
-table.easycal tr td{
 	border-top: 1px solid #CCC;
-	border-left: 1px solid #CCC;
-	padding: 10px;
-	cursor: pointer;
 }
 
-table.easycal tr td:FIRST-CHILD{
+.easycal table tr td:FIRST-CHILD .table-cell{
 	border-left: 0;
-	cursor: default;
 }
 
-table.easycal tr:FIRST-CHILD td{
+.easycal table tr td .table-cell:FIRST-CHILD{
 	border-top: 0;
 }
