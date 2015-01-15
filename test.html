@@ -5,7 +5,7 @@
 	<link rel="stylesheet" type="text/css" href="easycal.css">
 
 	<style>
-		body{ width: 960px; margin: 0 auto; font-size: 12px; box-sizing: border-box;}
+		body{ width: 960px; margin: 0 auto; font-size: 12px; font-family: Arial; box-sizing: border-box;}
 
 	</style>
 </head>
@@ -17,6 +17,7 @@
 	<script type="text/javascript" src="lib/jquery-1.11.1.min.js"></script>
 	<script type="text/javascript" src="lib/underscore-1.7.0.min.js"></script>
 	<script type="text/javascript" src="lib/moment-2.9.0.min.js"></script>
+	<script type="text/javascript" src="dataset.js"></script>
 	<script type="text/javascript" src="easycal.js"></script>
 
 	<script>
@@ -24,10 +25,11 @@
 			minTime : '09:00:00',
 			maxTime : '19:00:00',
 			slotDuration : 30,
-			startDate : '31/10/2014',
+			startDate : '31-10-2014', // OR 31/10/2104
 			dayClick : function(){
 				console.log('Slot selected');
-			}
+			},
+			events : getEvents()
 		});
 	</script>
 </body>
