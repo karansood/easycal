@@ -33,13 +33,22 @@
 
 .easycal table.ec-time-grid-table tr td:FIRST-CHILD{
 	border-left: 0;
+	width: 50px;
 }
 
-.easycal table.ec-time-grid-table .table-cell{
+.easycal table.ec-time-grid-table tr td .table-cell{
 	height: 36px;
 	max-height: 36px;
 	border-top: 1px solid #CCC;
 	text-align: center;
+}
+
+.easycal table.ec-time-grid-table tr td .table-cell:FIRST-CHILD{
+	border-top: 0;
+}
+
+.easycal table.ec-time-grid-table tr td .table-cell.ec-slot{
+	cursor: pointer;
 }
 
 .easycal table.ec-time-grid-table .table-cell .ec-time-range{
@@ -47,22 +56,6 @@
 	padding-bottom: 3px;
 }
 
-.easycal table.ec-time-grid-table td .ec-slot .ec-minor-slot:FIRST-CHILD{
+.easycal table.ec-time-grid-table tr td .ec-slot .ec-minor-slot:FIRST-CHILD{
 	border-top: 0 !important;
-}
-
-.easycal table.ec-time-grid-table tr td:FIRST-CHILD{
-	width: 50px;
-}
-
-.easycal .table-cell.ec-slot{
-	cursor: pointer;
-}
-
-.easycal table tr td:FIRST-CHILD .table-cell{
-	border-left: 0;
-}
-
-.easycal table tr td .table-cell:FIRST-CHILD{
-	border-top: 0;
 }
