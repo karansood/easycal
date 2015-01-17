@@ -8,6 +8,32 @@
 		}
 	}
 
+	var widgetProperties = {
+		classnames : {
+			mainTable : 'easycal',
+			headerTable : 'ec-head-table',
+			timeGridTable : 'ec-time-grid-table',
+
+			timeLabel : 'ec-time',
+			dayColumn : 'ec-slot-col',
+			timeSlot : 'ec-slot',
+			minorSlot : 'ec-minor-slot',
+			eventContainer : 'ec-event',
+			timeRange : 'ec-time-range',
+			eventTitle : 'ec-event-title'
+		},
+
+		format : {
+			dateLong : 'DD-MM-YYYY HH:mm:ss',
+			dateShort : 'DD-MM-YYYY',
+			timeLong : 'HH:mm:ss',
+			timeShort : 'HH:mm'
+		}
+	};
+
+	var classes = widgetProperties.classnames;
+	var format = widgetProperties.format;
+
 	var Easycal = {
 		init : function(options, elem){
 			var self = this;
@@ -16,21 +42,45 @@
 
 			self.options = options;
 
-			self.momStartDate = moment(this.options.startDate, 'DD-MM-YYYY');
-			self.momMinTime = moment(this.options.minTime, 'HH:mm:ss');
-			self.momMaxTime = moment(this.options.maxTime, 'HH:mm:ss');
+			self.momStartDate = moment(this.options.startDate, format.dateShort);
+			self.momMinTime = moment(this.options.minTime, format.timeLong);
+			self.momMaxTime = moment(this.options.maxTime, format.timeLong);
 
 			self.launch();
+			self.attachEventHandlers();
 			
-			self.$elem.find('.ec-slot').on('click', function(){
-				self.options.dayClick.apply(self);
-			});
-
 		},
 
 		launch : function(){
 			this.display();
+
+			var $timeGridTable = this.$elem.find('table.' + classes.timeGridTable);
+			var $cols = $timeGridTable.find('td.' + classes.dayColumn);
+
+			self.colWidth = $cols.eq(0).width();
+			self.slotHeight = $cols.find('.' + classes.timeSlot).eq(0).height();
+
+			this.inflateMinorSlots();	
 			this.showEvents();
+		},
+
+		attachEventHandlers : function(){
+			var self = this;
+			self.$elem.find('table.' + classes.timeGridTable + ' .' + classes.timeSlot).on('click', function(ev){
+				if($(ev.target).closest('.' + classes.eventContainer).length || $(ev.target).hasClass(classes.eventContainer)){
+					var $eventContainer = (($(ev.target).closest('.' + classes.eventContainer).length) ? $(ev.target).closest('.' + classes.eventContainer) : $(ev.target));
+					var eventId = $eventContainer.attr('data-event-id');
+					self.options.eventClick.apply(self, [eventId]);
+				}else{
+					var slotStartTime = $(this).attr('data-time');
+					self.options.dayClick.apply(self, [$(this), slotStartTime]);
+				}
+			});
+		},
+
+		display : function(){
+			var html = this.renderHTML();
+			this.$elem.html(html);
 		},
 
 		refresh : function(){
@@ -43,9 +93,9 @@
 			var date = this.momStartDate.clone().isoWeekday(1);
 			
 			for(var i = 0 ; i < 7 ; i++){
-				var dateStr = date.format('DD-MM-YYYY');
+				var dateStr = date.format(format.dateShort);
 				var filteredEvents = _.filter(events, function(event){
-					if((moment(event.start, 'DD-MM-YYYY HH:mm:ss').format('DD-MM-YYYY')) === dateStr){
+					if((moment(event.start, format.dateLong).format(format.dateShort)) === dateStr){
 						return true;
 					}
 				});
@@ -58,11 +108,12 @@
 		showEvents : function(){
 			var self = this;
 			var events = this.options.events;
-			var $cols = this.$elem.find('table td.ec-slot-col');
 
-			var eventDateMap = this.mapEventsByDate();
+			var $timeGridTable = this.$elem.find('table.' + classes.timeGridTable);
+			var $cols = $timeGridTable.find('td.' + classes.dayColumn);
 
-			var $col = null, $slots, schedule, slotTime;
+			var eventDateMap = this.mapEventsByDate(), $col = null, $slots = null, $slot = null, schedule = null, slotTime = null;
+
 			_.each($cols, function(col, i){
 				$col = $(col); 
 				var colDate = $col.attr('data-date');
@@ -70,43 +121,95 @@
 				
 				if(dayEvents.length){
 					schedule = self.getDaySchedule(dayEvents);
-					console.log('Schedule for date : ' + colDate);
-					console.log(schedule);
 
-					$slots = $col.find('.ec-slot');
+					if(self.options.timeGranularity === self.options.slotDuration){
+						$slots = $col.find('.' + classes.timeSlot);
+					}else{
+						$slots = $col.find('.' + classes.timeSlot + ' .' + classes.minorSlot);
+					}
+					
 					_.each($slots, function(slot, i){
-						slotTime = $(slot).attr('data-time');
+						$slot = $(slot);
+						slotTime = $slot.attr('data-time');
 						var scheduleForSlot = schedule[slotTime];
 						if(scheduleForSlot.length > 1){
 							$(slot).css({
-								'background-color' : '#ABC',
-								color : '#000'
-							})
-								.html('<div>Multiple</div>');
+								'background-color' : self.options.overlapColor,
+								color : self.options.overlapTextColor
+							}).html(self.renderSlotHTML(scheduleForSlot));
 						}else if(scheduleForSlot.length){
-							$(slot).css({
+							$slot.css({
 								'background-color' : scheduleForSlot[0].backgroundColor,
 								color : scheduleForSlot[0].textColor
-							});
-							var slotStartTime = moment(colDate + ' ' + slotTime, 'DD-MM-YYYY HH:mm:ss');
-							var eventStartTime = moment(scheduleForSlot[0].start, 'DD-MM-YYYY HH:mm:ss');
+							}).addClass(classes.eventContainer).attr('data-event-id', scheduleForSlot[0].id);
+							var slotStartTime = moment(colDate + ' ' + slotTime, format.dateLong);
+							var eventStartTime = moment(scheduleForSlot[0].start, format.dateLong);
 							if(slotStartTime.isSame(eventStartTime)){
-								$(slot).html('<div>' + scheduleForSlot[0].title + '</div>');
+								$slot.html(self.renderSlotHTML(scheduleForSlot));
+								if(!self.isSpanMultipleSlots(scheduleForSlot)){
+									$slot.find('.' + classes.eventTitle).css({
+										width: (self.colWidth - 6),
+										'white-space': 'nowrap',
+										overflow: 'hidden',
+										'text-overflow': 'ellipsis'
+									});
+								}
 							}else{
 								$(slot).css({
 									'border-top' : '1px solid ' + scheduleForSlot[0].backgroundColor
 								});
 							}
+							if($slot.hasClass(classes.minorSlot)){
+								var parentSlotTime = $slot.parent('.' + classes.timeSlot).attr('data-time');
+								var momParentSlotTime = moment(colDate + ' ' + parentSlotTime, format.dateLong);
+								if(momParentSlotTime.isAfter(eventStartTime)){
+									$slot.parent('.' + classes.timeSlot).css({
+										'border-top' : '1px solid ' + scheduleForSlot[0].backgroundColor
+									});
+								}
+							}
 						}
+						
 					});
 				}
 			});
 		},
 
+		isSpanMultipleSlots : function(schedule){
+			if(schedule.length === 1){
+				var startTime = moment(schedule[0].start, format.dateLong).add(this.options.slotDuration, 'm');
+				var endTime = moment(schedule[0].end, format.dateLong);
+				if(!startTime.isSame(endTime)){
+					return true;
+				}else{
+					return false;
+				}
+			}
+			// TODO: check if this error is really needed
+			throw Error('easycal : function isSpanMultipleSlots - schedule overlap');
+		},
+
+		renderSlotHTML : function(scheduleList){
+			var html = '';
+			if(scheduleList.length > 1){
+				html += '<div>Multiple</div>';
+			}else if(scheduleList.length){
+				schedule = scheduleList[0];
+				var startTime = moment(schedule.start, format.dateLong).format(format.timeShort);
+				var endTime = moment(schedule.end, format.dateLong).format(format.timeShort); 
+				html += '' +
+					'<div style="padding-top: 4px;">' +
+						'<div class="' + classes.timeRange + '">' + startTime + ' - ' + endTime + '</div>' +
+						'<div class="' + classes.eventTitle + '">' + schedule.title + '</div>' +
+					'</div>';
+			}
+			return html;
+		},
+
 		getDaySchedule : function(dayEvents){
-			var date = moment(dayEvents[0].start, 'DD-MM-YYYY HH:mm:ss').format('DD-MM-YYYY');
-			var minTime = moment(date + ' ' + this.options.minTime, 'DD-MM-YYYY HH:mm:ss');
-			var maxTime = moment(date + ' ' + this.options.maxTime, 'DD-MM-YYYY HH:mm:ss');
+			var date = moment(dayEvents[0].start, format.dateLong).format(format.dateShort);
+			var minTime = moment(date + ' ' + this.options.minTime, format.dateLong);
+			var maxTime = moment(date + ' ' + this.options.maxTime, format.dateLong);
 			var time = minTime.clone();
 
 			var schedule = {};
@@ -114,20 +217,20 @@
 			var begining = null, end = null;
 			for(;time.isBefore(maxTime);){
 				begining = time.clone();
-				end = begining.clone().add(15, 'm');
+				end = begining.clone().add(this.options.timeGranularity, 'm');
 
 				var slotEvents = _.filter(dayEvents, function(event){
 					
-					var eventStart = moment(event.start, 'DD-MM-YYYY HH:mm:ss');
-					var eventEnd = moment(event.end, 'DD-MM-YYYY HH:mm:ss');
+					var eventStart = moment(event.start, format.dateLong);
+					var eventEnd = moment(event.end, format.dateLong);
 
 					if(eventStart.isBefore(end) && eventEnd.isAfter(begining)){
 						return true;
 					}
 				});
 
-				schedule[time.format('HH:mm:ss')] = slotEvents;
-				time.add(15,'m'); //this.options.slotDuration
+				schedule[time.format(format.timeLong)] = slotEvents;
+				time.add(this.options.timeGranularity,'m');
 			}
 			return schedule;
 		},
@@ -152,7 +255,7 @@
 		},
 
 		renderHeadHTML : function(){
-			var date = moment(this.options.startDate, 'DD-MM-YYYY');
+			var date = moment(this.options.startDate, format.dateShort);
 			date.isoWeekday(1);
 
 			var html = '<table border="0" cellspacing="0" cellpadding="0" class="ec-head-table"><tbody><tr>';
@@ -174,7 +277,7 @@
 			var maxTime = this.momMaxTime;
 			var time = minTime.clone();
 
-			var date = moment(this.options.startDate, 'DD-MM-YYYY');
+			var date = moment(this.options.startDate, format.dateShort);
 			date.isoWeekday(1);
 			
 			var html = '<table border="0" cellspacing="0" cellpadding="0" class="ec-time-grid-table"><tbody><tr>';
@@ -185,7 +288,7 @@
 				if(i===0){
 					html += '<td>';
 				}else{
-					colDate = date.format('DD-MM-YYYY');
+					colDate = date.format(format.dateShort);
 					html += '<td class="ec-slot-col" data-date="' + colDate + '">';
 					date.add(1, 'd');
 				}
@@ -193,10 +296,12 @@
 				for(;time.isBefore(maxTime);){
 					if(i === 0){
 						cellContent = time.format(this.options.timeFormat);
-						html += '<div class="table-cell ' + this.options.widgetTimeClass + '">' + cellContent + '</div>';
+						html += '<div class="table-cell ' + classes.timeLabel + '">' + cellContent + '</div>';
 					}else{
-						timeTag = time.format('HH:mm:ss');
-						html += '<div class="table-cell ' + this.options.widgetSlotClass + '" data-time="' + timeTag + '"></div>';
+						timeTag = time.format(format.timeLong);
+						html += '<div class="table-cell ' + classes.timeSlot + '" data-time="' + timeTag + '">';
+						html += this.getMinorSlotForCell(time);
+						html += '</div>';
 					}
 					time.add(this.options.slotDuration,'m');
 				}
@@ -208,10 +313,28 @@
 			return html + '</tr></tbody></table>';
 		},
 
-		display : function(){
-			var html = this.renderHTML();
-			this.$elem.html(this.renderHTML());
+		// TODO: cache the return value for this and use it 
+		getMinorSlotForCell : function(momTime){
+			var time = momTime.clone();
+			var html = '';
+			if(this.options.timeGranularity < this.options.slotDuration){
+				for(var i = 0 ; i < (this.options.slotDuration/this.options.timeGranularity); i++ ){
+					html += '<div class="' + classes.minorSlot + '" data-time="' + time.format(format.timeLong) + '"></div>';
+					time.add(this.options.timeGranularity,'m');
+				}
+			}
+			return html;
+		},
+
+		inflateMinorSlots : function(){
+			var granularityLevel = this.options.slotDuration/this.options.timeGranularity;
+			var minorSlotHeight = self.slotHeight/granularityLevel;
+			this.$elem.find('table.' + classes.timeGridTable + ' td .' + classes.minorSlot).css({
+				height: minorSlotHeight,
+				'max-height' : minorSlotHeight
+			});
 		}
+
 	};
 
 	$.fn.easycal = function(options){
@@ -222,7 +345,6 @@
 
 			var easycal = Object.create(Easycal);
 			easycal.init(mergedOptions, this);
-
 			
 		});
 	};
@@ -232,14 +354,13 @@
 		timeFormat : 'HH:mm',
 		minTime : '08:00:00',
 		maxTime : '19:00:00',
-		slotDuration : 15, //in mins
+		slotDuration : 30, //in mins
+		timeGranularity : 15, // in mins
 		dayClick : null,
 		eventClick : null,
 		events : [],
-
-		widgetHeaderClass : 'ec-day-header',
-		widgetSlotClass : 'ec-slot',
-		widgetTimeClass : 'ec-time'
+		overlapColor : '#FF0',
+		overlapTextColor : '#000'
 	};
 
 })(jQuery, window, document, _);
