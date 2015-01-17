@@ -1,4 +1,8 @@
-(function($, window, document, _, undefined){
+// TODO: Show disabled slots
+// TODO: option to start from a different day of week
+
+;(function($, window, document, _, moment, undefined){
+	'use strict';
 
 	if( typeof Object.create !== 'function'){
 		Object.create = function(obj){
@@ -9,9 +13,12 @@
 	}
 
 	var widgetProperties = {
+		dataKey : 'easycal',
 		classnames : {
+			widget : 'easycal-widget',
 			mainTable : 'easycal',
 			headerTable : 'ec-head-table',
+			timeGridContainer : 'ec-time-grid-container',
 			timeGridTable : 'ec-time-grid-table',
 
 			timeLabel : 'ec-time',
@@ -35,10 +42,13 @@
 	var format = widgetProperties.format;
 
 	var Easycal = {
-		init : function(options, elem){
+
+		init : function(elem, options){
 			var self = this;
+
 			self.elem = elem;
 			self.$elem = $( elem );
+			self.$elem.addClass(classes.widget);
 
 			self.options = options;
 
@@ -46,48 +56,72 @@
 			self.momMinTime = moment(this.options.minTime, format.timeLong);
 			self.momMaxTime = moment(this.options.maxTime, format.timeLong);
 
-			self.launch();
-			self.attachEventHandlers();
-			
+			self._launch();
+			self._attachEventHandlers();			
 		},
 
-		launch : function(){
-			this.display();
+		_launch : function(){
+			this._display();
+			this._calculateDimensions();
+			this._inflateMinorSlots();	
+			this._showEvents();
+		},
 
+		_calculateDimensions : function(){
 			var $timeGridTable = this.$elem.find('table.' + classes.timeGridTable);
 			var $cols = $timeGridTable.find('td.' + classes.dayColumn);
 
 			self.colWidth = $cols.eq(0).width();
 			self.slotHeight = $cols.find('.' + classes.timeSlot).eq(0).height();
-
-			this.inflateMinorSlots();	
-			this.showEvents();
 		},
 
-		attachEventHandlers : function(){
+		_attachEventHandlers : function(){
 			var self = this;
 			self.$elem.find('table.' + classes.timeGridTable + ' .' + classes.timeSlot).on('click', function(ev){
 				if($(ev.target).closest('.' + classes.eventContainer).length || $(ev.target).hasClass(classes.eventContainer)){
-					var $eventContainer = (($(ev.target).closest('.' + classes.eventContainer).length) ? $(ev.target).closest('.' + classes.eventContainer) : $(ev.target));
-					var eventId = $eventContainer.attr('data-event-id');
-					self.options.eventClick.apply(self, [eventId]);
-				}else{
+					if(typeof self.options.eventClick === 'function'){
+						var $eventContainer = (($(ev.target).closest('.' + classes.eventContainer).length) ? $(ev.target).closest('.' + classes.eventContainer) : $(ev.target));
+						var eventId = $eventContainer.attr('data-event-id');
+						
+						self.options.eventClick.apply(self, [eventId]);
+					}
+				}else if(typeof self.options.dayClick === 'function'){
 					var slotStartTime = $(this).attr('data-time');
 					self.options.dayClick.apply(self, [$(this), slotStartTime]);
 				}
 			});
 		},
 
-		display : function(){
+		_detachEventHandlers : function(){
+			this.$elem.find('table.' + classes.timeGridTable + ' .' + classes.timeSlot).off();
+		},
+
+		_display : function(){
 			var html = this.renderHTML();
 			this.$elem.html(html);
 		},
 
-		refresh : function(){
+		refresh : function(events){
+			this._detachEventHandlers();
+			this._clearEvents();
+			
+			if(events){
+				this.options.events = events;
+			}
 
+			this._calculateDimensions();
+			this._inflateMinorSlots();
+			this._showEvents();
 		},
 
-		mapEventsByDate : function(){
+		destroy : function(){
+			this.$elem.removeClass(classes.widget);
+			$.data(this.elem, widgetProperties.dataKey, null);
+			this._detachEventHandlers();
+			this.$elem.children().hide().remove();
+		},
+
+		_mapEventsByDate : function(){
 			var res = {};
 			var events = this.options.events;
 			var date = this.momStartDate.clone().isoWeekday(1);
@@ -105,14 +139,14 @@
 			return res;
 		},
 
-		showEvents : function(){
+		_showEvents : function(){
 			var self = this;
 			var events = this.options.events;
 
 			var $timeGridTable = this.$elem.find('table.' + classes.timeGridTable);
 			var $cols = $timeGridTable.find('td.' + classes.dayColumn);
 
-			var eventDateMap = this.mapEventsByDate(), $col = null, $slots = null, $slot = null, schedule = null, slotTime = null;
+			var eventDateMap = this._mapEventsByDate(), $col = null, $slots = null, $slot = null, schedule = null, slotTime = null;
 
 			_.each($cols, function(col, i){
 				$col = $(col); 
@@ -133,15 +167,18 @@
 						slotTime = $slot.attr('data-time');
 						var scheduleForSlot = schedule[slotTime];
 						if(scheduleForSlot.length > 1){
+							// Events overlap for a time slot
 							$(slot).css({
 								'background-color' : self.options.overlapColor,
 								color : self.options.overlapTextColor
 							}).html(self.renderSlotHTML(scheduleForSlot));
+
 						}else if(scheduleForSlot.length){
 							$slot.css({
 								'background-color' : scheduleForSlot[0].backgroundColor,
 								color : scheduleForSlot[0].textColor
 							}).addClass(classes.eventContainer).attr('data-event-id', scheduleForSlot[0].id);
+
 							var slotStartTime = moment(colDate + ' ' + slotTime, format.dateLong);
 							var eventStartTime = moment(scheduleForSlot[0].start, format.dateLong);
 							if(slotStartTime.isSame(eventStartTime)){
@@ -175,6 +212,19 @@
 			});
 		},
 
+		/*
+		 * Redraws the timeGridTable without the events
+		 */
+		_clearEvents : function(){
+			var html = this._renderTimeGridHTML();
+			this.$elem.find('.' + classes.timeGridContainer).children().hide().remove();
+			this.$elem.find('.' + classes.timeGridContainer).html(html);
+		},
+
+		/*
+		 * Accepts only a single schedule and returns true if
+		 * it spans multiple slotDurations
+		 */
 		isSpanMultipleSlots : function(schedule){
 			if(schedule.length === 1){
 				var startTime = moment(schedule[0].start, format.dateLong).add(this.options.slotDuration, 'm');
@@ -185,16 +235,14 @@
 					return false;
 				}
 			}
-			// TODO: check if this error is really needed
-			throw Error('easycal : function isSpanMultipleSlots - schedule overlap');
 		},
 
 		renderSlotHTML : function(scheduleList){
 			var html = '';
 			if(scheduleList.length > 1){
-				html += '<div>Multiple</div>';
+				html += '<div>' + this.options.overlapTitle + '</div>';
 			}else if(scheduleList.length){
-				schedule = scheduleList[0];
+				var schedule = scheduleList[0];
 				var startTime = moment(schedule.start, format.dateLong).format(format.timeShort);
 				var endTime = moment(schedule.end, format.dateLong).format(format.timeShort); 
 				html += '' +
@@ -246,8 +294,8 @@
 						'</thead>' +
 						'<tbody>' +
 							'<tr>' +
-								'<td>' +
-									(this.renderTimeGridHTML()) +
+								'<td class="' + classes.timeGridContainer + '">' +
+									(this._renderTimeGridHTML()) +
 								'</td>' +
 							'</tr>' +
 						'</tobdy' +
@@ -272,7 +320,7 @@
 			return html + '</tr></tbody></table>';
 		},
 
-		renderTimeGridHTML : function(){
+		_renderTimeGridHTML : function(){
 			var minTime = this.momMinTime;
 			var maxTime = this.momMaxTime;
 			var time = minTime.clone();
@@ -300,7 +348,7 @@
 					}else{
 						timeTag = time.format(format.timeLong);
 						html += '<div class="table-cell ' + classes.timeSlot + '" data-time="' + timeTag + '">';
-						html += this.getMinorSlotForCell(time);
+						html += this._getMinorSlotForCell(time);
 						html += '</div>';
 					}
 					time.add(this.options.slotDuration,'m');
@@ -313,8 +361,7 @@
 			return html + '</tr></tbody></table>';
 		},
 
-		// TODO: cache the return value for this and use it 
-		getMinorSlotForCell : function(momTime){
+		_getMinorSlotForCell : function(momTime){
 			var time = momTime.clone();
 			var html = '';
 			if(this.options.timeGranularity < this.options.slotDuration){
@@ -326,7 +373,7 @@
 			return html;
 		},
 
-		inflateMinorSlots : function(){
+		_inflateMinorSlots : function(){
 			var granularityLevel = this.options.slotDuration/this.options.timeGranularity;
 			var minorSlotHeight = self.slotHeight/granularityLevel;
 			this.$elem.find('table.' + classes.timeGridTable + ' td .' + classes.minorSlot).css({
@@ -340,16 +387,31 @@
 	$.fn.easycal = function(options){
 
 		var mergedOptions = $.extend({}, $.fn.easycal.defaults, options);
+		var args = Array.prototype.slice.call(arguments, 1);
 
-		return this.each(function(i, elem){
+		if(typeof options === 'undefined' || typeof options === 'object'){
+			return this.each(function(){
+				if(!$.data(this, widgetProperties.dataKey)){
+					var easycal = Object.create(Easycal);
+					$.data(this, widgetProperties.dataKey, easycal);
+					easycal.init(this, mergedOptions);
+				}
+			});
+		} else if(typeof options === 'string' && options[0] !== '_'){
+			var returns;
+			this.each(function(){
+				var instance = $.data(this, widgetProperties.dataKey);
+				if(Easycal.isPrototypeOf(instance) && typeof instance[options] === 'function'){
+					returns = instance[options].apply(instance, args);
+				}
+			});
 
-			var easycal = Object.create(Easycal);
-			easycal.init(mergedOptions, this);
-			
-		});
+			return (typeof returns === 'undefined') ? this : returns;
+		}
 	};
 
 	$.fn.easycal.defaults = {
+		startDate : moment().format(format.dateShort),
 		columnDateFormat : 'dddd, DD MMM',
 		timeFormat : 'HH:mm',
 		minTime : '08:00:00',
@@ -360,7 +422,8 @@
 		eventClick : null,
 		events : [],
 		overlapColor : '#FF0',
-		overlapTextColor : '#000'
+		overlapTextColor : '#000',
+		overlapTitle : 'Multiple'
 	};
 
-})(jQuery, window, document, _);
+})(jQuery, window, document, _, moment);

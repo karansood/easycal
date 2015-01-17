@@ -13,7 +13,6 @@
 
 	<div class="mycal" style="width:100%;"></div>
 
-
 	<script type="text/javascript" src="lib/jquery-1.11.1.min.js"></script>
 	<script type="text/javascript" src="lib/underscore-1.7.0.min.js"></script>
 	<script type="text/javascript" src="lib/moment-2.9.0.min.js"></script>
@@ -22,19 +21,29 @@
 
 	<script>
 		$('.mycal').easycal({
+			startDate : '31-10-2014', // OR 31/10/2104
+			timeFormat : 'HH:mm',
+			columnDateFormat : 'dddd, DD MMM',
 			minTime : '09:00:00',
 			maxTime : '19:00:00',
 			slotDuration : 30,
 			timeGranularity : 15,
-			startDate : '31-10-2014', // OR 31/10/2104
+			
 			dayClick : function(el, startTime){
 				console.log('Slot selected: ' + startTime);
 			},
 			eventClick : function(eventId){
 				console.log('Event was clicked with id: ' + eventId);
 			},
-			events : getEvents()
+
+			events : getEvents(),
+			
+			overlapColor : '#FF0',
+			overlapTextColor : '#000',
+			overlapTitle : 'Multiple'
 		});
+
+
 	</script>
 </body>
 </html>

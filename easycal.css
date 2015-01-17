@@ -27,10 +27,17 @@
 	width: 50px;
 }
 
+.easycal table.ec-time-grid-table tr td{
+	border-left: 1px solid #CCC;
+}
+
+.easycal table.ec-time-grid-table tr td:FIRST-CHILD{
+	border-left: 0;
+}
+
 .easycal table.ec-time-grid-table .table-cell{
 	height: 36px;
 	max-height: 36px;
-	border-left: 1px solid #CCC;
 	border-top: 1px solid #CCC;
 	text-align: center;
 }
