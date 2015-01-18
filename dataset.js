@@ -12,8 +12,8 @@ function getEvents(){
 		{
 			id : 'E02',
 			title : 'Lunch',
-			start : '27-10-2014 12:45:00',
-			end : '27-10-2014 13:30:00',
+			start : '27-10-2014 13:15:00',
+			end : '27-10-2014 14:30:00',
 			backgroundColor: '#12CA6B',
 			textColor : '#FFF'
 		},
